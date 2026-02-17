@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>RecipeJS - Part 3</title>
+
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+    font-family: Arial, sans-serif;
+    background:#f4f4f4;
+}
+
+header {
+    background: linear-gradient(90deg,#6a11cb,#2575fc);
+    color:white;
+    text-align:center;
+    padding:20px;
+}
+
+.controls {
+    text-align:center;
+    padding:20px;
+}
+
+.controls button {
+    padding:8px 14px;
+    margin:5px;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+    background:#ddd;
+}
+
+.controls button.active {
+    background:#2575fc;
+    color:white;
+}
+
+#recipe-container {
+    display:flex;
+    flex-wrap:wrap;
+    gap:20px;
+    justify-content:center;
+    padding:30px;
+}
+
+.recipe-card {
+    background:white;
+    width:260px;
+    padding:15px;
+    border-radius:10px;
+    box-shadow:0 4px 8px rgba(0,0,0,0.1);
+}
+
+.badge {
+    display:inline-block;
+    padding:4px 8px;
+    border-radius:5px;
+    color:white;
+    font-size:12px;
+}
+
+.easy { background:green; }
+.medium { background:orange; }
+.hard { background:red; }
+
+.toggle-btn {
+    margin-top:8px;
+    padding:5px 8px;
+    font-size:12px;
+    cursor:pointer;
+}
+
+.steps-container,
+.ingredients-container {
+    display:none;
+    margin-top:10px;
+    background:#f9f9f9;
+    padding:8px;
+    border-radius:5px;
+}
+
+.visible {
+    display:block;
+}
+
+.steps-container ul {
+    padding-left:15px;
+}
+
+.steps-container li {
+    margin-bottom:5px;
+}
+
+.substep {
+    margin-left:15px;
+    color:#555;
+    font-size:13px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>🍳 RecipeJS</h1>
+<p>Functional Cooking Companion</p>
+</header>
+
+<div class="controls">
+    <button data-filter="all" class="active">Show All</button>
+    <button data-filter="easy">Easy</button>
+    <button data-filter="medium">Medium</button>
+    <button data-filter="hard">Hard</button>
+    <button data-filter="quick">Quick</button>
+    <br><br>
+    <button data-sort="none" class="active">Default</button>
+    <button data-sort="name">Name (A-Z)</button>
+    <button data-sort="time">Time</button>
+</div>
+
+<div id="recipe-container"></div>
+
+<script>
+
+const RecipeApp = (function(){
+
+    console.log("RecipeApp initializing...");
+
+    /* =======================
+       DATA
+    ======================= */
+
+    const recipes = [
+        {
+            id:1,
+            title:"Grilled Cheese",
+            time:10,
+            difficulty:"easy",
+            description:"Crispy grilled sandwich.",
+            ingredients:["Bread","Butter","Cheese"],
+            steps:[
+                "Heat pan",
+                "Butter bread",
+                "Add cheese",
+                "Grill both sides"
+            ]
+        },
+        {
+            id:2,
+            title:"Pasta Alfredo",
+            time:25,
+            difficulty:"easy",
+            description:"Creamy pasta.",
+            ingredients:["Pasta","Cream","Garlic","Cheese"],
+            steps:[
+                "Boil pasta",
+                {
+                    text:"Prepare sauce",
+                    substeps:[
+                        "Heat butter",
+                        "Add garlic",
+                        "Add cream",
+                        {
+                            text:"Add seasoning",
+                            substeps:["Salt","Pepper"]
+                        }
+                    ]
+                },
+                "Mix and serve"
+            ]
+        },
+        {
+            id:3,
+            title:"Chicken Biryani",
+            time:90,
+            difficulty:"hard",
+            description:"Spicy rice dish.",
+            ingredients:["Rice","Chicken","Spices","Onion"],
+            steps:[
+                "Marinate chicken",
+                "Cook rice",
+                {
+                    text:"Layer ingredients",
+                    substeps:[
+                        "Add rice layer",
+                        "Add chicken layer"
+                    ]
+                },
+                "Cook on low heat"
+            ]
+        },
+        {
+            id:4,
+            title:"Pancakes",
+            time:30,
+            difficulty:"medium",
+            description:"Fluffy breakfast.",
+            ingredients:["Flour","Milk","Eggs","Sugar"],
+            steps:["Mix ingredients","Heat pan","Pour batter","Flip","Serve"]
+        }
+    ];
+
+    let currentFilter="all";
+    let currentSort="none";
+
+    const container=document.querySelector("#recipe-container");
+    const filterBtns=document.querySelectorAll("[data-filter]");
+    const sortBtns=document.querySelectorAll("[data-sort]");
+
+    /* =======================
+       RECURSION
+    ======================= */
+
+    const renderSteps=(steps,level=0)=>{
+        let html="<ul>";
+        steps.forEach(step=>{
+            if(typeof step==="string"){
+                html+=`<li class="${level>0?'substep':''}">${step}</li>`;
+            } else {
+                html+=`<li class="${level>0?'substep':''}">${step.text}`;
+                html+=renderSteps(step.substeps,level+1);
+                html+="</li>";
+            }
+        });
+        html+="</ul>";
+        return html;
+    };
+
+    /* =======================
+       CARD
+    ======================= */
+
+    const createCard=(recipe)=>{
+        return `
+        <div class="recipe-card">
+            <h3>${recipe.title}</h3>
+            <p>${recipe.description}</p>
+            <p><strong>Time:</strong> ${recipe.time} mins</p>
+            <span class="badge ${recipe.difficulty}">
+                ${recipe.difficulty}
+            </span>
+
+            <br>
+            <button class="toggle-btn" data-id="${recipe.id}" data-type="steps">
+                Show Steps
+            </button>
+
+            <div class="steps-container" id="steps-${recipe.id}">
+                ${renderSteps(recipe.steps)}
+            </div>
+
+            <button class="toggle-btn" data-id="${recipe.id}" data-type="ingredients">
+                Show Ingredients
+            </button>
+
+            <div class="ingredients-container" id="ingredients-${recipe.id}">
+                <ul>
+                    ${recipe.ingredients.map(i=>`<li>${i}</li>`).join("")}
+                </ul>
+            </div>
+        </div>
+        `;
+    };
+
+    const render=(list)=>{
+        container.innerHTML=list.map(createCard).join("");
+    };
+
+    /* =======================
+       FILTER + SORT
+    ======================= */
+
+    const applyFilter=(list,type)=>{
+        if(type==="quick") return list.filter(r=>r.time<30);
+        if(type==="easy"||type==="medium"||type==="hard")
+            return list.filter(r=>r.difficulty===type);
+        return list;
+    };
+
+    const applySort=(list,type)=>{
+        if(type==="name")
+            return [...list].sort((a,b)=>a.title.localeCompare(b.title));
+        if(type==="time")
+            return [...list].sort((a,b)=>a.time-b.time);
+        return list;
+    };
+
+    const updateDisplay=()=>{
+        let result=recipes;
+        result=applyFilter(result,currentFilter);
+        result=applySort(result,currentSort);
+        render(result);
+        updateActive();
+    };
+
+    const updateActive=()=>{
+        filterBtns.forEach(b=>{
+            b.classList.toggle("active",b.dataset.filter===currentFilter);
+        });
+        sortBtns.forEach(b=>{
+            b.classList.toggle("active",b.dataset.sort===currentSort);
+        });
+    };
+
+    /* =======================
+       EVENT DELEGATION
+    ======================= */
+
+    container.addEventListener("click",(e)=>{
+        if(e.target.classList.contains("toggle-btn")){
+            const id=e.target.dataset.id;
+            const type=e.target.dataset.type;
+            const section=document.getElementById(`${type}-${id}`);
+            section.classList.toggle("visible");
+
+            e.target.textContent=
+                section.classList.contains("visible")
+                ? `Hide ${type.charAt(0).toUpperCase()+type.slice(1)}`
+                : `Show ${type.charAt(0).toUpperCase()+type.slice(1)}`;
+        }
+    });
+
+    filterBtns.forEach(btn=>{
+        btn.addEventListener("click",()=>{
+            currentFilter=btn.dataset.filter;
+            updateDisplay();
+        });
+    });
+
+    sortBtns.forEach(btn=>{
+        btn.addEventListener("click",()=>{
+            currentSort=btn.dataset.sort;
+            updateDisplay();
+        });
+    });
+
+    /* =======================
+       INIT
+    ======================= */
+
+    const init=()=>{
+        updateDisplay();
+        console.log("RecipeApp ready!");
+    };
+
+    return { init };
+
+})();
+
+RecipeApp.init();
+
+</script>
+
+</body>
+</html>
