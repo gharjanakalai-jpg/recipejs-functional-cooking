@@ -2,64 +2,92 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>RecipeJS - Part 3</title>
+<title>RecipeJS - Part 4</title>
 
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 
 body {
-    font-family: Arial, sans-serif;
-    background:#f4f4f4;
+  font-family: Arial, sans-serif;
+  background:#f4f4f4;
 }
 
 header {
-    background: linear-gradient(90deg,#6a11cb,#2575fc);
-    color:white;
-    text-align:center;
-    padding:20px;
+  background: linear-gradient(90deg,#6a11cb,#2575fc);
+  color:white;
+  text-align:center;
+  padding:20px;
+}
+
+#search-input {
+  padding:8px;
+  width:250px;
+  border-radius:5px;
+  border:none;
+  margin-top:10px;
 }
 
 .controls {
-    text-align:center;
-    padding:20px;
+  text-align:center;
+  padding:15px;
 }
 
 .controls button {
-    padding:8px 14px;
-    margin:5px;
-    border:none;
-    border-radius:5px;
-    cursor:pointer;
-    background:#ddd;
+  padding:6px 12px;
+  margin:4px;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+  background:#ddd;
 }
 
 .controls button.active {
-    background:#2575fc;
-    color:white;
+  background:#2575fc;
+  color:white;
+}
+
+#counter {
+  text-align:center;
+  margin:10px;
+  font-weight:bold;
 }
 
 #recipe-container {
-    display:flex;
-    flex-wrap:wrap;
-    gap:20px;
-    justify-content:center;
-    padding:30px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:20px;
+  justify-content:center;
+  padding:20px;
 }
 
 .recipe-card {
-    background:white;
-    width:260px;
-    padding:15px;
-    border-radius:10px;
-    box-shadow:0 4px 8px rgba(0,0,0,0.1);
+  background:white;
+  width:260px;
+  padding:15px;
+  border-radius:10px;
+  box-shadow:0 4px 8px rgba(0,0,0,0.1);
+  position:relative;
+}
+
+.favorite-btn {
+  position:absolute;
+  top:10px;
+  right:10px;
+  cursor:pointer;
+  font-size:18px;
+  color:#aaa;
+}
+
+.favorite-btn.favorited {
+  color:red;
 }
 
 .badge {
-    display:inline-block;
-    padding:4px 8px;
-    border-radius:5px;
-    color:white;
-    font-size:12px;
+  display:inline-block;
+  padding:4px 8px;
+  border-radius:5px;
+  color:white;
+  font-size:12px;
 }
 
 .easy { background:green; }
@@ -67,37 +95,31 @@ header {
 .hard { background:red; }
 
 .toggle-btn {
-    margin-top:8px;
-    padding:5px 8px;
-    font-size:12px;
-    cursor:pointer;
+  margin-top:8px;
+  padding:5px 8px;
+  font-size:12px;
+  cursor:pointer;
 }
 
 .steps-container,
 .ingredients-container {
-    display:none;
-    margin-top:10px;
-    background:#f9f9f9;
-    padding:8px;
-    border-radius:5px;
+  display:none;
+  margin-top:10px;
+  background:#f9f9f9;
+  padding:8px;
+  border-radius:5px;
 }
 
-.visible {
-    display:block;
-}
-
-.steps-container ul {
-    padding-left:15px;
-}
-
-.steps-container li {
-    margin-bottom:5px;
-}
+.visible { display:block; }
 
 .substep {
-    margin-left:15px;
-    color:#555;
-    font-size:13px;
+  margin-left:15px;
+  font-size:13px;
+  color:#555;
+}
+
+@media(max-width:600px){
+  #recipe-container { flex-direction:column; align-items:center; }
 }
 </style>
 </head>
@@ -107,251 +129,223 @@ header {
 <header>
 <h1>🍳 RecipeJS</h1>
 <p>Functional Cooking Companion</p>
+<input type="text" id="search-input" placeholder="Search recipes...">
 </header>
 
 <div class="controls">
-    <button data-filter="all" class="active">Show All</button>
-    <button data-filter="easy">Easy</button>
-    <button data-filter="medium">Medium</button>
-    <button data-filter="hard">Hard</button>
-    <button data-filter="quick">Quick</button>
-    <br><br>
-    <button data-sort="none" class="active">Default</button>
-    <button data-sort="name">Name (A-Z)</button>
-    <button data-sort="time">Time</button>
+  <button data-filter="all" class="active">All</button>
+  <button data-filter="easy">Easy</button>
+  <button data-filter="medium">Medium</button>
+  <button data-filter="hard">Hard</button>
+  <button data-filter="quick">Quick</button>
+  <button data-filter="favorites">Favorites</button>
+  <br><br>
+  <button data-sort="none" class="active">Default</button>
+  <button data-sort="name">Name</button>
+  <button data-sort="time">Time</button>
 </div>
 
+<div id="counter"></div>
 <div id="recipe-container"></div>
 
 <script>
-
 const RecipeApp = (function(){
 
-    console.log("RecipeApp initializing...");
+  /* ================= DATA ================= */
 
-    /* =======================
-       DATA
-    ======================= */
+  const recipes = [
+    {
+      id:1,
+      title:"Grilled Cheese",
+      time:10,
+      difficulty:"easy",
+      description:"Crispy grilled sandwich",
+      ingredients:["Bread","Butter","Cheese"],
+      steps:["Heat pan","Butter bread","Add cheese","Grill"]
+    },
+    {
+      id:2,
+      title:"Pasta Alfredo",
+      time:25,
+      difficulty:"easy",
+      description:"Creamy pasta",
+      ingredients:["Pasta","Cream","Garlic"],
+      steps:["Boil pasta","Prepare sauce","Mix and serve"]
+    },
+    {
+      id:3,
+      title:"Chicken Biryani",
+      time:90,
+      difficulty:"hard",
+      description:"Spicy rice dish",
+      ingredients:["Rice","Chicken","Spices"],
+      steps:["Marinate","Cook rice","Layer","Cook"]
+    },
+    {
+      id:4,
+      title:"Pancakes",
+      time:30,
+      difficulty:"medium",
+      description:"Fluffy breakfast",
+      ingredients:["Flour","Milk","Eggs"],
+      steps:["Mix","Heat pan","Cook","Serve"]
+    }
+  ];
 
-    const recipes = [
-        {
-            id:1,
-            title:"Grilled Cheese",
-            time:10,
-            difficulty:"easy",
-            description:"Crispy grilled sandwich.",
-            ingredients:["Bread","Butter","Cheese"],
-            steps:[
-                "Heat pan",
-                "Butter bread",
-                "Add cheese",
-                "Grill both sides"
-            ]
-        },
-        {
-            id:2,
-            title:"Pasta Alfredo",
-            time:25,
-            difficulty:"easy",
-            description:"Creamy pasta.",
-            ingredients:["Pasta","Cream","Garlic","Cheese"],
-            steps:[
-                "Boil pasta",
-                {
-                    text:"Prepare sauce",
-                    substeps:[
-                        "Heat butter",
-                        "Add garlic",
-                        "Add cream",
-                        {
-                            text:"Add seasoning",
-                            substeps:["Salt","Pepper"]
-                        }
-                    ]
-                },
-                "Mix and serve"
-            ]
-        },
-        {
-            id:3,
-            title:"Chicken Biryani",
-            time:90,
-            difficulty:"hard",
-            description:"Spicy rice dish.",
-            ingredients:["Rice","Chicken","Spices","Onion"],
-            steps:[
-                "Marinate chicken",
-                "Cook rice",
-                {
-                    text:"Layer ingredients",
-                    substeps:[
-                        "Add rice layer",
-                        "Add chicken layer"
-                    ]
-                },
-                "Cook on low heat"
-            ]
-        },
-        {
-            id:4,
-            title:"Pancakes",
-            time:30,
-            difficulty:"medium",
-            description:"Fluffy breakfast.",
-            ingredients:["Flour","Milk","Eggs","Sugar"],
-            steps:["Mix ingredients","Heat pan","Pour batter","Flip","Serve"]
-        }
-    ];
+  /* ================= STATE ================= */
 
-    let currentFilter="all";
-    let currentSort="none";
+  let currentFilter="all";
+  let currentSort="none";
+  let searchQuery="";
+  let favorites=JSON.parse(localStorage.getItem("recipeFavorites")) || [];
+  let debounceTimer;
 
-    const container=document.querySelector("#recipe-container");
-    const filterBtns=document.querySelectorAll("[data-filter]");
-    const sortBtns=document.querySelectorAll("[data-sort]");
+  /* ================= DOM ================= */
 
-    /* =======================
-       RECURSION
-    ======================= */
+  const container=document.querySelector("#recipe-container");
+  const counter=document.querySelector("#counter");
+  const filterBtns=document.querySelectorAll("[data-filter]");
+  const sortBtns=document.querySelectorAll("[data-sort]");
+  const searchInput=document.querySelector("#search-input");
 
-    const renderSteps=(steps,level=0)=>{
-        let html="<ul>";
-        steps.forEach(step=>{
-            if(typeof step==="string"){
-                html+=`<li class="${level>0?'substep':''}">${step}</li>`;
-            } else {
-                html+=`<li class="${level>0?'substep':''}">${step.text}`;
-                html+=renderSteps(step.substeps,level+1);
-                html+="</li>";
-            }
-        });
-        html+="</ul>";
-        return html;
-    };
+  /* ================= HELPERS ================= */
 
-    /* =======================
-       CARD
-    ======================= */
+  const renderSteps=(steps)=>{
+    return `<ul>${steps.map(s=>`<li>${s}</li>`).join("")}</ul>`;
+  };
 
-    const createCard=(recipe)=>{
-        return `
-        <div class="recipe-card">
-            <h3>${recipe.title}</h3>
-            <p>${recipe.description}</p>
-            <p><strong>Time:</strong> ${recipe.time} mins</p>
-            <span class="badge ${recipe.difficulty}">
-                ${recipe.difficulty}
-            </span>
+  const updateCounter=(visible,total)=>{
+    counter.textContent=`Showing ${visible} of ${total} recipes`;
+  };
 
-            <br>
-            <button class="toggle-btn" data-id="${recipe.id}" data-type="steps">
-                Show Steps
-            </button>
+  const isFavorite=(id)=>favorites.includes(id);
 
-            <div class="steps-container" id="steps-${recipe.id}">
-                ${renderSteps(recipe.steps)}
-            </div>
+  const toggleFavorite=(id)=>{
+    if(isFavorite(id)){
+      favorites=favorites.filter(f=>f!==id);
+    } else {
+      favorites.push(id);
+    }
+    localStorage.setItem("recipeFavorites",JSON.stringify(favorites));
+    updateDisplay();
+  };
 
-            <button class="toggle-btn" data-id="${recipe.id}" data-type="ingredients">
-                Show Ingredients
-            </button>
+  /* ================= FILTERS ================= */
 
-            <div class="ingredients-container" id="ingredients-${recipe.id}">
-                <ul>
-                    ${recipe.ingredients.map(i=>`<li>${i}</li>`).join("")}
-                </ul>
-            </div>
-        </div>
-        `;
-    };
-
-    const render=(list)=>{
-        container.innerHTML=list.map(createCard).join("");
-    };
-
-    /* =======================
-       FILTER + SORT
-    ======================= */
-
-    const applyFilter=(list,type)=>{
-        if(type==="quick") return list.filter(r=>r.time<30);
-        if(type==="easy"||type==="medium"||type==="hard")
-            return list.filter(r=>r.difficulty===type);
-        return list;
-    };
-
-    const applySort=(list,type)=>{
-        if(type==="name")
-            return [...list].sort((a,b)=>a.title.localeCompare(b.title));
-        if(type==="time")
-            return [...list].sort((a,b)=>a.time-b.time);
-        return list;
-    };
-
-    const updateDisplay=()=>{
-        let result=recipes;
-        result=applyFilter(result,currentFilter);
-        result=applySort(result,currentSort);
-        render(result);
-        updateActive();
-    };
-
-    const updateActive=()=>{
-        filterBtns.forEach(b=>{
-            b.classList.toggle("active",b.dataset.filter===currentFilter);
-        });
-        sortBtns.forEach(b=>{
-            b.classList.toggle("active",b.dataset.sort===currentSort);
-        });
-    };
-
-    /* =======================
-       EVENT DELEGATION
-    ======================= */
-
-    container.addEventListener("click",(e)=>{
-        if(e.target.classList.contains("toggle-btn")){
-            const id=e.target.dataset.id;
-            const type=e.target.dataset.type;
-            const section=document.getElementById(`${type}-${id}`);
-            section.classList.toggle("visible");
-
-            e.target.textContent=
-                section.classList.contains("visible")
-                ? `Hide ${type.charAt(0).toUpperCase()+type.slice(1)}`
-                : `Show ${type.charAt(0).toUpperCase()+type.slice(1)}`;
-        }
+  const applySearch=(list)=>{
+    if(!searchQuery) return list;
+    const q=searchQuery.toLowerCase();
+    return list.filter(r=>{
+      const titleMatch=r.title.toLowerCase().includes(q);
+      const ingredientMatch=r.ingredients.some(i=>i.toLowerCase().includes(q));
+      const descMatch=r.description.toLowerCase().includes(q);
+      return titleMatch || ingredientMatch || descMatch;
     });
+  };
 
-    filterBtns.forEach(btn=>{
-        btn.addEventListener("click",()=>{
-            currentFilter=btn.dataset.filter;
-            updateDisplay();
-        });
+  const applyFilter=(list)=>{
+    if(currentFilter==="quick") return list.filter(r=>r.time<30);
+    if(["easy","medium","hard"].includes(currentFilter))
+      return list.filter(r=>r.difficulty===currentFilter);
+    if(currentFilter==="favorites")
+      return list.filter(r=>favorites.includes(r.id));
+    return list;
+  };
+
+  const applySort=(list)=>{
+    if(currentSort==="name")
+      return [...list].sort((a,b)=>a.title.localeCompare(b.title));
+    if(currentSort==="time")
+      return [...list].sort((a,b)=>a.time-b.time);
+    return list;
+  };
+
+  /* ================= RENDER ================= */
+
+  const createCard=(recipe)=>{
+    return `
+    <div class="recipe-card">
+      <span class="favorite-btn ${isFavorite(recipe.id)?'favorited':''}" 
+        data-id="${recipe.id}">❤</span>
+
+      <h3>${recipe.title}</h3>
+      <p>${recipe.description}</p>
+      <p><strong>Time:</strong> ${recipe.time} mins</p>
+      <span class="badge ${recipe.difficulty}">
+        ${recipe.difficulty}
+      </span>
+
+      <button class="toggle-btn" data-id="${recipe.id}" data-type="steps">
+        Show Steps
+      </button>
+
+      <div class="steps-container" id="steps-${recipe.id}">
+        ${renderSteps(recipe.steps)}
+      </div>
+    </div>
+    `;
+  };
+
+  const render=(list)=>{
+    container.innerHTML=list.map(createCard).join("");
+  };
+
+  const updateDisplay=()=>{
+    let result=recipes;
+    result=applySearch(result);
+    result=applyFilter(result);
+    result=applySort(result);
+    updateCounter(result.length,recipes.length);
+    render(result);
+  };
+
+  /* ================= EVENTS ================= */
+
+  searchInput.addEventListener("input",()=>{
+    clearTimeout(debounceTimer);
+    debounceTimer=setTimeout(()=>{
+      searchQuery=searchInput.value.trim();
+      updateDisplay();
+    },300);
+  });
+
+  container.addEventListener("click",(e)=>{
+    if(e.target.classList.contains("favorite-btn")){
+      toggleFavorite(Number(e.target.dataset.id));
+    }
+    if(e.target.classList.contains("toggle-btn")){
+      const id=e.target.dataset.id;
+      const section=document.getElementById(`steps-${id}`);
+      section.classList.toggle("visible");
+    }
+  });
+
+  filterBtns.forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      currentFilter=btn.dataset.filter;
+      updateDisplay();
     });
+  });
 
-    sortBtns.forEach(btn=>{
-        btn.addEventListener("click",()=>{
-            currentSort=btn.dataset.sort;
-            updateDisplay();
-        });
+  sortBtns.forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      currentSort=btn.dataset.sort;
+      updateDisplay();
     });
+  });
 
-    /* =======================
-       INIT
-    ======================= */
+  /* ================= INIT ================= */
 
-    const init=()=>{
-        updateDisplay();
-        console.log("RecipeApp ready!");
-    };
+  const init=()=>{
+    console.log("RecipeJS Part 4 Initialized 🚀");
+    updateDisplay();
+  };
 
-    return { init };
+  return { init };
 
 })();
 
 RecipeApp.init();
-
 </script>
 
 </body>
