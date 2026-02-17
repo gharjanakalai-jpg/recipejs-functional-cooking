@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RecipeJS - Functional Cooking Companion</title>
+
+<style>
+/* ===== RESET ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+}
+
+/* ===== HEADER ===== */
+header {
+    background: linear-gradient(90deg, #6a11cb, #2575fc);
+    color: white;
+    text-align: center;
+    padding: 20px;
+}
+
+/* ===== CONTROLS ===== */
+.controls {
+    padding: 20px;
+    text-align: center;
+}
+
+.controls button {
+    padding: 8px 14px;
+    margin: 5px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #ddd;
+    transition: 0.3s;
+}
+
+.controls button:hover {
+    background-color: #bbb;
+}
+
+.controls button.active {
+    background-color: #2575fc;
+    color: white;
+}
+
+/* ===== RECIPE GRID ===== */
+#recipe-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    padding: 30px;
+    justify-content: center;
+}
+
+/* ===== RECIPE CARD ===== */
+.recipe-card {
+    background: white;
+    width: 250px;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+}
+
+.recipe-card:hover {
+    transform: translateY(-5px);
+}
+
+.recipe-card h3 {
+    margin-bottom: 10px;
+}
+
+.recipe-card p {
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+/* ===== BADGES ===== */
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 5px;
+    color: white;
+    font-size: 12px;
+}
+
+.easy { background: green; }
+.medium { background: orange; }
+.hard { background: red; }
+
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>🍳 RecipeJS</h1>
+    <p>Your Functional Cooking Companion</p>
+</header>
+
+<main>
+
+<section class="controls">
+
+    <div>
+        <button data-filter="all" class="active">Show All</button>
+        <button data-filter="easy">Easy</button>
+        <button data-filter="medium">Medium</button>
+        <button data-filter="hard">Hard</button>
+        <button data-filter="quick">Quick (&lt;30 mins)</button>
+    </div>
+
+    <div>
+        <button data-sort="none" class="active">Default</button>
+        <button data-sort="name">Name (A-Z)</button>
+        <button data-sort="time">Time (Fastest)</button>
+    </div>
+
+</section>
+
+<div id="recipe-container"></div>
+
+</main>
+
+<script>
+
+/* =========================
+   Recipe Data
+========================= */
+
+const recipes = [
+    { id: 1, title: "Grilled Cheese Sandwich", time: 10, difficulty: "easy", description: "Classic grilled cheese sandwich.", category: "Snack" },
+    { id: 2, title: "Pasta Alfredo", time: 25, difficulty: "easy", description: "Creamy Alfredo pasta.", category: "Dinner" },
+    { id: 3, title: "Chicken Biryani", time: 90, difficulty: "hard", description: "Spiced rice with chicken.", category: "Lunch" },
+    { id: 4, title: "Chocolate Cake", time: 70, difficulty: "hard", description: "Rich chocolate cake.", category: "Dessert" },
+    { id: 5, title: "Caesar Salad", time: 20, difficulty: "easy", description: "Fresh Caesar salad.", category: "Salad" },
+    { id: 6, title: "Beef Stroganoff", time: 60, difficulty: "medium", description: "Beef in creamy mushroom sauce.", category: "Dinner" },
+    { id: 7, title: "Sushi Rolls", time: 75, difficulty: "hard", description: "Homemade sushi rolls.", category: "Lunch" },
+    { id: 8, title: "Pancakes", time: 30, difficulty: "medium", description: "Fluffy breakfast pancakes.", category: "Breakfast" }
+];
+
+/* =========================
+   State
+========================= */
+
+let currentFilter = "all";
+let currentSort = "none";
+
+/* =========================
+   DOM
+========================= */
+
+const recipeContainer = document.querySelector("#recipe-container");
+const filterButtons = document.querySelectorAll("[data-filter]");
+const sortButtons = document.querySelectorAll("[data-sort]");
+
+/* =========================
+   Card Creation
+========================= */
+
+const createRecipeCard = (recipe) => {
+    return `
+        <div class="recipe-card">
+            <h3>${recipe.title}</h3>
+            <p><strong>Time:</strong> ${recipe.time} mins</p>
+            <p><strong>Category:</strong> ${recipe.category}</p>
+            <p>${recipe.description}</p>
+            <span class="badge ${recipe.difficulty}">
+                ${recipe.difficulty}
+            </span>
+        </div>
+    `;
+};
+
+const renderRecipes = (recipeList) => {
+    recipeContainer.innerHTML =
+        recipeList.map(recipe => createRecipeCard(recipe)).join("");
+};
+
+/* =========================
+   Filters (Pure)
+========================= */
+
+const filterByDifficulty = (recipes, difficulty) =>
+    recipes.filter(recipe => recipe.difficulty === difficulty);
+
+const filterByTime = (recipes, maxTime) =>
+    recipes.filter(recipe => recipe.time < maxTime);
+
+const applyFilter = (recipes, type) => {
+    switch(type) {
+        case "easy":
+        case "medium":
+        case "hard":
+            return filterByDifficulty(recipes, type);
+        case "quick":
+            return filterByTime(recipes, 30);
+        default:
+            return recipes;
+    }
+};
+
+/* =========================
+   Sorting (Pure)
+========================= */
+
+const sortByName = (recipes) =>
+    [...recipes].sort((a, b) => a.title.localeCompare(b.title));
+
+const sortByTime = (recipes) =>
+    [...recipes].sort((a, b) => a.time - b.time);
+
+const applySort = (recipes, type) => {
+    switch(type) {
+        case "name":
+            return sortByName(recipes);
+        case "time":
+            return sortByTime(recipes);
+        default:
+            return recipes;
+    }
+};
+
+/* =========================
+   Update Display
+========================= */
+
+const updateDisplay = () => {
+    let result = recipes;
+    result = applyFilter(result, currentFilter);
+    result = applySort(result, currentSort);
+
+    console.log(`Displaying ${result.length} recipes (Filter: ${currentFilter}, Sort: ${currentSort})`);
+
+    renderRecipes(result);
+    updateActiveButtons();
+};
+
+/* =========================
+   Button Active State
+========================= */
+
+const updateActiveButtons = () => {
+
+    filterButtons.forEach(btn => {
+        btn.classList.remove("active");
+        if (btn.dataset.filter === currentFilter) {
+            btn.classList.add("active");
+        }
+    });
+
+    sortButtons.forEach(btn => {
+        btn.classList.remove("active");
+        if (btn.dataset.sort === currentSort) {
+            btn.classList.add("active");
+        }
+    });
+
+};
+
+/* =========================
+   Event Listeners
+========================= */
+
+filterButtons.forEach(button => {
+    button.addEventListener("click", (e) => {
+        currentFilter = e.target.dataset.filter;
+        updateDisplay();
+    });
+});
+
+sortButtons.forEach(button => {
+    button.addEventListener("click", (e) => {
+        currentSort = e.target.dataset.sort;
+        updateDisplay();
+    });
+});
+
+/* =========================
+   Initialize
+========================= */
+
+updateDisplay();
+
+</script>
+
+</body>
+</html>
